@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Canada Deco — Catalogue 2026 (zap)</title>
+<style>
+  :root{--ink:#120F0D;--gold:#C9973F;--gold-soft:#E6C27A;--cream:#EDE4D8;--muted:#8c8277}
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%;background:var(--ink);color:var(--cream);font-family:Georgia,"Times New Roman",serif;overflow:hidden}
+
+  /* Plein écran, une page à la fois, on zappe à gauche / droite */
+  .deck{position:fixed;inset:0;display:flex;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none;scroll-behavior:smooth}
+  .deck::-webkit-scrollbar{display:none}
+  .page{flex:0 0 100vw;height:100vh;scroll-snap-align:center;display:flex;align-items:center;justify-content:center;position:relative;background:var(--ink)}
+  .page img{max-width:100%;max-height:100%;width:auto;height:auto;object-fit:contain;box-shadow:0 20px 60px rgba(0,0,0,.6)}
+  .page .num{position:absolute;bottom:18px;left:50%;transform:translateX(-50%);font-size:11px;letter-spacing:.35em;color:rgba(237,228,216,.5)}
+
+  header{position:fixed;top:0;left:0;right:0;display:flex;justify-content:space-between;align-items:center;padding:16px 24px;z-index:5;pointer-events:none}
+  header .brand{font-size:12px;letter-spacing:.35em;text-transform:uppercase;color:var(--gold-soft)}
+  header .pos{font-size:12px;letter-spacing:.25em;color:var(--muted)}
+
+  .zone{position:fixed;top:0;bottom:0;width:22%;z-index:4;cursor:pointer}
+  .zone.l{left:0}
+  .zone.r{right:0}
+
+  .dots{position:fixed;bottom:14px;left:50%;transform:translateX(-50%);display:flex;gap:6px;z-index:5;max-width:90vw;flex-wrap:wrap;justify-content:center}
+  .dots span{width:6px;height:6px;border-radius:50%;background:rgba(201,151,63,.25);cursor:pointer}
+  .dots span.on{background:var(--gold)}
+
+  .arrow{position:fixed;top:50%;transform:translateY(-50%);color:var(--gold-soft);font-size:28px;opacity:.5;z-index:5;pointer-events:none}
+  .arrow.l{left:14px}
+  .arrow.r{right:14px}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand">Canada Deco &middot; Catalogue 2026</div>
+  <div class="pos" id="pos"></div>
+</header>
+
+<div class="deck" id="deck"></div>
+<div class="zone l" id="zl"></div>
+<div class="zone r" id="zr"></div>
+<div class="arrow l">&#8249;</div>
+<div class="arrow r">&#8250;</div>
+<div class="dots" id="dots"></div>
+
+<script>
+  const TOTAL = 17;
+  const pad = n => String(n).padStart(2, '0');
+  const deck = document.getElementById('deck');
+  const dotsEl = document.getElementById('dots');
+  const posEl = document.getElementById('pos');
+
+  for (let i = 1; i <= TOTAL; i++) {
+    const d = document.createElement('section');
+    d.className = 'page';
+    d.dataset.i = i - 1;
+    d.innerHTML = `<img src="p-${pad(i)}.jpg" alt="Page ${i}" loading="${i <= 2 ? 'eager' : 'lazy'}"><div class="num">${pad(i)} / ${pad(TOTAL)}</div>`;
+    deck.appendChild(d);
+
+    const dot = document.createElement('span');
+    dot.onclick = () => goTo(i - 1);
+    dotsEl.appendChild(dot);
+  }
+
+  const pages = [...deck.children];
+  const dots = [...dotsEl.children];
+  let cur = 0;
+
+  function goTo(i) {
+    i = Math.max(0, Math.min(TOTAL - 1, i));
+    pages[i].scrollIntoView({behavior: 'smooth', inline: 'center', block: 'nearest'});
+  }
+
+  function sync() {
+    const w = deck.clientWidth;
+    cur = Math.round(deck.scrollLeft / w);
+    dots.forEach((d, k) => d.classList.toggle('on', k === cur));
+    posEl.textContent = `${pad(cur + 1)} / ${pad(TOTAL)}`;
+  }
+  deck.addEventListener('scroll', () => requestAnimationFrame(sync), {passive: true});
+  window.addEventListener('resize', () => goTo(cur));
+
+  document.getElementById('zl').onclick = () => goTo(cur - 1);
+  document.getElementById('zr').onclick = () => goTo(cur + 1);
+  document.addEventListener('keydown', e => {
+    if (e.key === 'ArrowRight' || e.key === ' ') { e.preventDefault(); goTo(cur + 1); }
+    if (e.key === 'ArrowLeft') { e.preventDefault(); goTo(cur - 1); }
+  });
+  // Molette : zap horizontal
+  let wheelLock = false;
+  deck.addEventListener('wheel', e => {
+    if (wheelLock) return;
+    const delta = Math.abs(e.deltaY) > Math.abs(e.deltaX) ? e.deltaY : e.deltaX;
+    if (Math.abs(delta) < 20) return;
+    e.preventDefault();
+    wheelLock = true;
+    goTo(cur + (delta > 0 ? 1 : -1));
+    setTimeout(() => wheelLock = false, 600);
+  }, {passive: false});
+
+  sync();
+</script>
+</body>
+</html>
