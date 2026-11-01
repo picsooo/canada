@@ -82,7 +82,9 @@
   .zone.prev{left:0}
   .zone.next{right:0}
 
-  .rotate-hint{display:none;position:absolute;inset:0;align-items:center;justify-content:center;text-align:center;padding:24px;font-size:14px;letter-spacing:.12em;color:var(--gold-soft);background:rgba(18,15,13,.92);z-index:80}
+  .tip{display:none;position:absolute;top:6px;left:0;right:0;text-align:center;font-size:11px;letter-spacing:.14em;color:var(--muted);z-index:60;pointer-events:none}
+  .solo{display:none;position:absolute;inset:0;align-items:center;justify-content:center;padding:12px 10px}
+  .solo img{max-width:100%;max-height:100%;width:auto;height:auto;object-fit:contain;box-shadow:0 20px 50px rgba(0,0,0,.7);border:1px solid rgba(201,151,63,.2)}
 
   footer{
     position:fixed;bottom:0;left:0;right:0;height:84px;
@@ -101,7 +103,10 @@
   .progress{position:absolute;top:0;left:0;height:2px;background:var(--gold);transition:width .6s ease}
 
   @media (max-width:760px) and (orientation:portrait){
-    .rotate-hint{display:flex}
+    .tip{display:block}
+    .book{display:none}
+    .solo{display:flex}
+    .zone{width:50%}
   }
   @media (max-width:760px){
     .counter{min-width:120px;font-size:11px}
@@ -111,7 +116,7 @@
 <body>
 
 <header>
-  <a href="../">&larr; Accueil</a>
+  <a href="../presentation/">&larr; Accueil</a>
   <div class="brand">Canada Deco &middot; 2026</div>
 </header>
 
@@ -119,7 +124,8 @@
   <div class="book" id="book"><div class="spine" id="spine"></div></div>
   <div class="zone prev" id="zprev"></div>
   <div class="zone next" id="znext"></div>
-  <div class="rotate-hint">Tourne ton téléphone en paysage pour lire le catalogue en double page</div>
+  <div class="tip">Astuce : tourne ton téléphone en paysage pour voir la double page</div>
+  <div class="solo" id="solo"><img id="soloImg" alt="Page du catalogue"></div>
 </div>
 
 <footer>
@@ -187,14 +193,47 @@
     render();
   }
 
-  prevBtn.onclick = () => go(s - 1);
-  nextBtn.onclick = () => go(s + 1);
-  document.getElementById('zprev').onclick = () => go(s - 1);
-  document.getElementById('znext').onclick = () => go(s + 1);
+  // Mode portrait : une page à la fois. Mode paysage : double page en feuilleton.
+  const mq = window.matchMedia('(max-width:760px) and (orientation:portrait)');
+  const soloImg = document.getElementById('soloImg');
+  let p = 0; // index de page (0 à 16) en mode portrait
+
+  function soloRender() {
+    soloImg.src = `f-${pad(p + 1)}.jpg`;
+    counter.textContent = `${pad(p + 1)} / ${pad(TOTAL)}`;
+    prevBtn.disabled = p === 0;
+    nextBtn.disabled = p === TOTAL - 1;
+    progress.style.width = ((p + 1) / TOTAL * 100) + '%';
+  }
+
+  function step(dir) {
+    if (mq.matches) {
+      p = Math.max(0, Math.min(TOTAL - 1, p + dir));
+      soloRender();
+    } else {
+      go(s + dir);
+    }
+  }
+
+  // Passage d'un mode à l'autre : on garde la page affichée
+  mq.addEventListener('change', () => {
+    if (mq.matches) {
+      p = s === 0 ? 0 : 2 * s - 1;
+      soloRender();
+    } else {
+      s = Math.ceil(p / 2);
+      render();
+    }
+  });
+
+  prevBtn.onclick = () => step(-1);
+  nextBtn.onclick = () => step(1);
+  document.getElementById('zprev').onclick = () => step(-1);
+  document.getElementById('znext').onclick = () => step(1);
 
   document.addEventListener('keydown', e => {
-    if (e.key === 'ArrowRight' || e.key === 'PageDown') go(s + 1);
-    if (e.key === 'ArrowLeft' || e.key === 'PageUp') go(s - 1);
+    if (e.key === 'ArrowRight' || e.key === 'PageDown') step(1);
+    if (e.key === 'ArrowLeft' || e.key === 'PageUp') step(-1);
   });
 
   // Glissement tactile
@@ -204,11 +243,11 @@
   stage.addEventListener('touchend', e => {
     if (x0 === null) return;
     const dx = e.changedTouches[0].clientX - x0;
-    if (Math.abs(dx) > 40) dx < 0 ? go(s + 1) : go(s - 1);
+    if (Math.abs(dx) > 40) step(dx < 0 ? 1 : -1);
     x0 = null;
   });
 
-  render();
+  if (mq.matches) soloRender(); else render();
 </script>
 </body>
 </html>
